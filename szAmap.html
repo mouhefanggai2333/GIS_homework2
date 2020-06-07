@@ -1,0 +1,410 @@
+﻿<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width">
+    <title>Amap</title>
+    <link rel="stylesheet" href="https://a.amap.com/jsapi_demos/static/demo-center/css/demo-center.css" />
+    <link rel="stylesheet" href="https://cache.amap.com/lbs/static/main1119.css" />
+    <link rel="stylesheet" href="https://cache.amap.com/lbs/static/AMap.PlaceSearchRender1120.css" />
+    <style>
+        html,
+        body,
+        #container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        #panel {
+            z-index: 999;
+            position: absolute;
+            background-color: white;
+            max-height: 100%;
+            overflow-y: auto;
+            right: 0;
+            width: 280px;
+        }
+        
+        .input-item {
+            height: 2.2rem;
+        }
+
+        .btn {
+            width: 6rem;
+            margin: 0 1rem 0 2rem;
+        }
+        .btnn{
+        width: 6rem;
+        margin: 0 1rem 0 4.5rem;
+      }
+        .input-text {
+            width: 4rem;
+            margin-right: 1rem;
+        }
+
+        .info {
+            top: 530px;
+            right: 10px;
+            height: 7rem;
+            font-size: 110%;
+            color: rgb(20, 19, 19);
+            background-color: yellow;
+            border-style: solid;
+            border-width: 3px;
+            border-color: black;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    <div id="panel"></div>
+    <div id="myPageTop" style="width: 20rem;right:1000px;background-color:yellow;border-width:3px;border-color:black;">
+        <table>
+            <tr>
+                <td>
+                    <label>请输入查找关键字：</label>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <input id="tipinput" />
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div class='info'>操作说明：圆形和矩形通过拖拽来绘制，<br>其他覆盖物通过点击来绘制<br>沿线搜索可显示距离，多边形搜索可显示面积</div>
+    <div class="input-card" style='width: 24rem;background-color:yellow;border-width:3px;border-color:black;'>
+        <div class="input-item">
+            <input type="radio" name='func' checked="" value='marker'><span class="input-text">周围搜索</span>
+            <input type="radio" name='func' value='polyline'><span class="input-text">沿线搜索</span>
+            <input type="radio" name='func' value='polygon'><span class="input-text" style='width:5rem;'>多边形搜索</span>
+        </div>
+        <div class="input-item">
+            <input type="radio" name='func' value='rectangle'><span class="input-text">矩形搜索</span>
+            <input type="radio" name='func' value='circle'><span class="input-text">圆形搜索</span>
+        </div>
+        <div class="input-item">
+            <input id="clear" type="button" class="btn" value="清除标记" />
+            <input id="close" type="button" class="btn" value="关闭绘图" />
+        </div>
+    </div>
+    
+    <script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=028b149b85084328b612d3b957b79fa2&plugin=AMap.AutoComplete,AMap.PlaceSearch,AMap.MouseTool,AMap.ToolBar,AMap.ControlBar"></script>
+    <script type="text/javascript">
+        var map = new AMap.Map("container", {
+            resizeEnable: true,
+
+            viewMode: '3D', // 默认使用 2D 模式，如果希望使用带有俯仰角的 3D 模式，请设置 viewMode: '3D',
+            zoom: 12, //初始化地图层级
+            center: [114.06667, 22.61667], //初始化地图中心点
+        });
+
+        toolBar = new AMap.ToolBar({
+            position: {
+                top: '110px',
+                left: '40px'
+            }
+        });
+        controlBar = new AMap.ControlBar({
+            position: {
+                top: '10px',
+                left: '10px',
+            }
+        });
+        map.addControl(toolBar);
+        map.addControl(controlBar);
+
+        //输入提示
+        var auto = new AMap.AutoComplete({
+            input: "tipinput"
+        });
+
+        var placeSearch = new AMap.PlaceSearch({//定义搜索变量 pS
+            pageSize: 5, // 单页显示结果条数
+            pageIndex: 1, // 页码
+            citylimit: true,
+            map: map,
+            panel: "panel", // 结果列表将在此容器中进行展示。
+            autoFitView: true // 是否自动调整地图视野使绘制的 Marker点都处于视口的可见范围
+        });
+        auto.on("select", select) //注册监听，当选中某条记录时会触发
+
+        function select(e) {//针对选中的 poi 实现“标记”和“导入数据库”功能
+            placeSearch.setCity(e.poi.adcode);
+            placeSearch.search(e.poi.name, function (status, result) {
+                // 查询成功时， result 即对应匹配的 POI 信息
+                console.log(result);
+                var pois = result.poiList.pois;
+                for (var i = 0; i < pois.length; i++) {
+                    var poi = pois[i];
+                    var marker = [];
+                    marker[i] = new AMap.Marker({
+                        position: poi.location, //经纬度对象，也可以是一维数组[116.39,39.9]
+                        title: poi.name
+                    });
+                    // 将创建的点标记添加到已有的地图实例：
+                    map.add(marker[i]);
+                    addPOIData(poi.name, poi.id, poi.location.lng, poi.location.lat)
+
+                    //aPD 函数的实参为 poi 类的变量名
+                }
+                map.setFitView();
+            });
+        }
+        var mouseTool = new AMap.MouseTool(map);
+        //监听draw事件可获取画好的覆盖物
+        var overlays = [];
+        mouseTool.on('draw', function (e) {
+            overlays.push(e.obj);
+            switch (e.obj.CLASS_NAME) {
+                case 'AMap.Marker': {
+
+                    var placeSearch = new AMap.PlaceSearch({
+                        pageSize: 5, // 单页显示结果条数
+                        pageIndex: 1, // 页码
+                        citylimit: true, //是否强制限制在设置的城市内搜索
+                        map: map, // 展现结果的地图实例
+                        panel: "panel", // 结果列表将在 panel 中进行展示。
+                        autoFitView: true // 是否自动调整地图视野使绘制的 Marker 点都处于视口的可见范围
+
+                    });
+                    var cpoint = e.obj.getPosition();
+                    placeSearch.searchNearBy('', cpoint, 100, function (status, result) { search_Callback(status, result) });
+
+                    break;
+                }
+
+                case 'Overlay.Polyline': {
+                    var placeSearch = new AMap.PlaceSearch({
+                        pageSize: 5, // 单页显示结果条数
+                        pageIndex: 1, // 页码
+                        citylimit: true, //是否强制限制在设置的城市内搜索
+                        map: map, // 展现结果的地图实例
+                        panel: "panel", // 结果列表将在 panel 中进行展示。
+                        autoFitView: true // 是否自动调整地图视野使绘制的 Marker 点都处于视口的可见范围
+
+                    });
+
+
+                    var polygonArr = e.obj.getPath();
+                    var polygonArray = [];
+                    var lastp = polygonArr.length - 1
+                    var a = (polygonArr[0].lng - polygonArr[lastp].lng);
+                    var b = (polygonArr[0].lat - polygonArr[lastp].lat);
+                    var m = 0.0008;
+                    var y = m * Math.sqrt(Math.pow(a, 2) / (Math.pow(b, 2) + Math.pow(a , 2)));
+                    var x = -b * y / a;
+
+                    for (i = 0; i < polygonArr.length; i++)
+                        polygonArray[i] = [polygonArr[i].lng + x, polygonArr[i].lat + y];
+                    for (i = polygonArr.length - 1; i > -1; i--)
+                        polygonArray.push([polygonArr[i].lng - x, polygonArr[i].lat - y])
+
+                    var polygonb = new AMap.Polygon({
+                        path: polygonArray,//设置多边形边界路径
+                        strokeColor: "#FF33FF", //线颜色
+                        strokeOpacity: 1, //线透明度
+                        strokeWeight: 8, //线宽
+                        fillColor: "#FF6347", //填充色
+                        fillOpacity: 0.75//填充透明度
+                    });
+                    polygonb.setOptions({ fillColor: "#FF6347" });
+                    placeSearch.searchInBounds('', polygonb, function (status, result) { search_Callback(status, result) });
+                    break;
+                }
+
+                case 'Overlay.Polygon': {
+                    var placeSearch = new AMap.PlaceSearch({
+                        pageSize: 5, // 单页显示结果条数
+                        pageIndex: 1, // 页码
+                        citylimit: true, //是否强制限制在设置的城市内搜索
+                        map: map, // 展现结果的地图实例
+                        panel: "panel", // 结果列表将在 panel 中进行展示。
+                        autoFitView: true // 是否自动调整地图视野使绘制的 Marker 点都处于视口的可见范围
+
+                    });
+
+                    placeSearch.searchInBounds('', e.obj, function (status, result) { search_Callback(status, result) });
+                    break;
+                }
+
+                case 'Overlay.Rectangle': {
+                    var placeSearch = new AMap.PlaceSearch({
+                        pageSize: 5, // 单页显示结果条数
+                        pageIndex: 1, // 页码
+                        citylimit: true, //是否强制限制在设置的城市内搜索
+                        map: map, // 展现结果的地图实例
+                        panel: "panel", // 结果列表将在 panel 中进行展示。
+                        autoFitView: true // 是否自动调整地图视野使绘制的 Marker 点都处于视口的可见范围
+
+                    });
+                    var recb = e.obj.getOptions().bounds;
+                    placeSearch.searchInBounds('', recb, function (status, result) { search_Callback(status, result) });
+                    break;
+                }
+
+                case 'Overlay.Circle': {
+                    var placeSearch = new AMap.PlaceSearch({
+                        pageSize: 5, // 单页显示结果条数
+                        pageIndex: 1, // 页码
+                        citylimit: true, //是否强制限制在设置的城市内搜索
+                        map: map, // 展现结果的地图实例
+                        panel: "panel", // 结果列表将在 panel 中进行展示。
+                        autoFitView: true // 是否自动调整地图视野使绘制的 Marker 点都处于视口的可见范围
+
+                    });
+                    var cen = e.obj.getCenter();
+                    var rcircle = e.obj.getRadius();
+                    placeSearch.searchNearBy('', cen, rcircle, function (status, result) { search_Callback(status, result) });
+                    break;
+                }
+
+            }
+        })
+
+        function draw(type) {
+            switch (type) {
+                case 'marker': {
+                    mouseTool.marker({
+                        //同Marker的Option设置
+                    });
+
+                    break;
+                }
+                case 'polyline': {
+                    /*
+                    mouseTool.polyline({
+                        strokeColor: '#80d8ff'
+                        //同Polyline的Option设置
+                    });
+                    */
+                    mouseTool.rule({
+                startMarkerOptions : {//可缺省
+                    icon: new AMap.Icon({
+                        size: new AMap.Size(19, 31),//图标大小
+                        imageSize:new AMap.Size(19, 31),
+                        image: "//webapi.amap.com/theme/v1.3/markers/b/start.png"
+                    }),
+                    offset: new AMap.Pixel(-9, -31)
+                },
+                endMarkerOptions : {//可缺省
+                    icon: new AMap.Icon({
+                        size: new AMap.Size(19, 31),//图标大小
+                        imageSize:new AMap.Size(19, 31),
+                        image: "//webapi.amap.com/theme/v1.3/markers/b/end.png"
+                    }),
+                    offset: new AMap.Pixel(-9, -31)
+                },
+                midMarkerOptions : {//可缺省
+                    icon: new AMap.Icon({
+                        size: new AMap.Size(19, 31),//图标大小
+                        imageSize:new AMap.Size(19, 31),
+                        image: "//webapi.amap.com/theme/v1.3/markers/b/mid.png"
+                    }),
+                    offset: new AMap.Pixel(-9, -31)
+                },
+                lineOptions : {//可缺省
+                    strokeStyle: "solid",
+                    strokeColor: "#FF33FF",
+                    strokeOpacity: 1,
+                    strokeWeight: 2
+                }
+                //同 RangingTool 的 自定义 设置，缺省为默认样式
+            });
+                    break;
+                }
+                case 'polygon': {
+                    /*
+                    mouseTool.polygon({
+                        fillColor: '#00b0ff',
+                        strokeColor: '#80d8ff'
+                        //同Polygon的Option设置
+                    });*/
+                    mouseTool.measureArea({
+                        strokeColor:'#80d8ff',
+                        fillColor:'#80d8ff',
+                        fillOpacity:0.3
+                      //同 Polygon 的 Option 设置
+                    });
+                    break;
+                }
+                case 'rectangle': {
+                    mouseTool.rectangle({
+                        fillColor: '#00b0ff',
+                        strokeColor: '#80d8ff'
+                        //同Polygon的Option设置
+                    });
+                    
+                    break;
+                }
+                case 'circle': {
+                    mouseTool.circle({
+                        fillColor: '#00b0ff',
+                        strokeColor: '#80d8ff'
+                        //同Circle的Option设置
+                    });
+                    
+                    break;
+                }
+            }
+        }
+        var radios = document.getElementsByName('func');
+        for (var i = 0; i < radios.length; i += 1) {
+            radios[i].onchange = function (e) {
+
+                draw(e.target.value)
+            }
+        }
+        draw('marker')
+
+        document.getElementById('clear').onclick = function () {
+            map.remove(overlays)
+            overlays = [];
+            map.clearMap();
+            document.getElementById("panel").innerHTML = '&nbsp';//清空 panel 内的标记
+
+        }
+        document.getElementById('close').onclick = function () {
+            mouseTool.close(true)//关闭，并清除覆盖物
+             
+            for (var i = 0; i < radios.length; i += 1) {
+                radios[i].checked = false;
+            }
+        }
+        function search_Callback(status, result) {
+            if (status == 'complete' && result.info == 'OK') {
+                var pois = result.poiList.pois;
+                var marker = [];
+                for (var i = 0; i < pois.length; i++) {
+                    var poi = pois[i]
+
+                    marker[i] = new AMap.Marker({
+                        position: poi.location,//经纬度对象，也可以是经纬度构成的一维数组
+                        title: poi.name
+                    });
+                    // 将创建的点标记添加到已有的地图实例：
+                    map.add(marker[i]);
+                    addPOIData(poi.name, poi.id, poi.location.lng, poi.location.lat);
+
+                }
+            }
+        }
+
+
+        //Insert data into the database
+        function addPOIData(strName, strId, strLongitude, strLatitude) {
+            var conn = new ActiveXObject("ADODB.Connection");
+            conn.Open("DBQ=D:\\我的文件记录\\相关文字\\学科要求\\自己写的\\GIS\\gaodeWeb\\gdpoi.mdb;DRIVER={Microsoft Access Driver (*.mdb)};");
+            var sql = "insert into poi(Name,poiID,Lng,Lat) values('" + strName + "','" + strId + "','" + strLongitude + "','" + strLatitude + "')";
+            try {
+                conn.execute(sql);
+            }
+            catch (e) {
+                document.write(e.description);
+            }
+        }
+
+    </script>
+</body>
+</html>
